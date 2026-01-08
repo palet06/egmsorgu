@@ -24,12 +24,28 @@ interface QueryResult extends QueryItem {
   apiResponse?: APIResponse
 }
 
+function isInvalidParameter(value: string): boolean {
+  if (!value || value.trim() === "") return true
+  const invalidValues = ["KimlikNoBulunamadı", "VeriYok", "0", "-"]
+  return invalidValues.includes(value.trim())
+}
+
 export async function queryEGMAPI(item: QueryItem): Promise<QueryResult> {
+  if (isInvalidParameter(item.egmCountryCode) || isInvalidParameter(item.passportNo)) {
+    return {
+      ...item,
+      status: "failed",
+      apiResponse: {
+        success: false,
+        message: "BAŞARISIZ",
+        errorDetails: "PARAMETRE EKSİKLİĞİNDEN DOLAYI SORGU YAPILAMADI",
+      },
+    }
+  }
+
   try {
     const apiEndpoint = process.env.EGM_API_ENDPOINT
     const apiKey = process.env.EGM_API_KEY
-    console.log(apiEndpoint,apiKey)
-    console.log(item)
 
     if (!apiEndpoint || !apiKey) {
       throw new Error("API endpoint veya API key yapılandırılmamış")
@@ -39,18 +55,16 @@ export async function queryEGMAPI(item: QueryItem): Promise<QueryResult> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ApiKey: `${apiKey}`,
+        ApiKey: apiKey,
       },
       body: JSON.stringify(item),
     })
-    console.log(response)
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
     const apiResponse: APIResponse = await response.json()
-    console.log(apiResponse)
 
     return {
       ...item,
